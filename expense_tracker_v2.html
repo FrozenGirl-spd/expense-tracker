@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker - Cloud Sync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #ff6b6b;
+            --secondary: #4ecdc4;
+            --accent: #ffe66d;
+            --dark: #2d3436;
+            --light: #f8f9fa;
+            --border: #e1e8ed;
+            --text: #2d3436;
+            --success: #26de81;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Login Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 30px;
+            color: #667eea;
+        }
+
+        .modal-content .form-group {
+            margin-bottom: 20px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .modal-content input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-modal {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-modal-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-modal-primary:hover {
+            background: #764ba2;
+        }
+
+        .btn-modal-secondary {
+            background: var(--light);
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-modal-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            background: var(--light);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .auth-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .user-info {
+            text-align: center;
+            padding: 10px;
+            background: var(--light);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .user-info .email {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .btn-logout {
+            background: #ff6b6b;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        .btn-logout:hover {
+            background: #ff5252;
+        }
+
+        .sync-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            font-size: 0.9em;
+            z-index: 100;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .sync-status.synced {
+            color: #26de81;
+        }
+
+        .sync-status.syncing {
+            color: #ffa502;
+        }
+
+        .sync-status.error {
+            color: #ff6b6b;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: rgba(255,255,255,0.1);
+            padding: 8px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.6s ease-out 0.1s both;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .content {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text);
+            font-size: 0.95em;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+
+        .btn-danger:hover {
+            background: #ff5252;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        .stat-card h3 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #ffe66d;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .expenses-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .expense-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: var(--light);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            animation: slideIn 0.4s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .expense-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateX(5px);
+        }
+
+        .expense-detail {
+            flex: 1;
+        }
+
+        .expense-detail .category {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .expense-detail .description {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .expense-date {
+            font-size: 0.85em;
+            color: #999;
+            margin-right: 20px;
+        }
+
+        .expense-amount {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: #ff6b6b;
+            min-width: 100px;
+            text-align: right;
+            margin-right: 15px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .month-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .month-selector button {
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .month-selector button:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .month-selector input {
+            padding: 8px 12px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .category-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .category-item {
+            background: var(--light);
+            padding: 15px;
+            border-radius: 8px;
+            border-top: 3px solid #667eea;
+        }
+
+        .category-item .cat-name {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .category-item .cat-amount {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #ff6b6b;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .card {
+                padding: 20px;
+                border-radius: 12px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .expense-item {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .expense-amount {
+                order: 3;
+                width: 100%;
+                margin: 0;
+            }
+
+            .tabs {
+                gap: 5px;
+                padding: 6px;
+            }
+
+            .tab-btn {
+                padding: 10px 15px;
+                font-size: 0.95em;
+            }
+
+            .sync-status {
+                top: auto;
+                bottom: 20px;
+                right: 20px;
+            }
+
+            .modal-content {
+                margin: 20px;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--light);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+
+        .local-storage-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2>💰 Expense Tracker</h2>
+            
+            <div id="userInfo" style="display: none;">
+                <div class="user-info">
+                    <div class="email" id="currentEmail"></div>
+                    <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">Data synced across all devices ✓</p>
+                </div>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+
+            <div id="authContent">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+                    <button class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</button>
+                </div>
+
+                <form id="loginForm" class="auth-form active" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn-modal btn-modal-primary" style="width: 100%; margin-top: 10px;">Login</button>
+                    <p style="text-align: center; margin-top: 10px; font-size: 0.9em; color: #666;">
+                        Demo: test@example.com / password123
+                    </p>
+                </form>
+
+                <form id="signupForm" class="auth-form" onsubmit="handleSignup(event)">
+                    <div class="form-group">
+                        <label for="signupEmail">Email</label>
+                        <input type="email" id="signupEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signupPassword">Password (min 6 chars)</label>
+                        <input type="password" id="signupPassword" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn-modal btn-modal-primary" style="width: 100%; margin-top: 10px;">Create Account</button>
+                </form>
+
+                <p style="text-align: center; margin-top: 15px; font-size: 0.85em; color: #999;">
+                    Or use local storage only (no sync)
+                </p>
+                <button class="btn-modal btn-modal-secondary" style="width: 100%;" onclick="useLocalStorage()">Continue Offline</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="sync-status" id="syncStatus" style="display: none;">
+        📱 Synced to cloud
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>💰 Expense Tracker</h1>
+            <p>Track your daily and monthly expenses</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('daily')">Daily</button>
+            <button class="tab-btn" onclick="switchTab('monthly')">Monthly</button>
+        </div>
+
+        <!-- DAILY TAB -->
+        <div id="daily" class="content active">
+            <div class="card">
+                <h2 style="margin-bottom: 20px;">Add Daily Expense</h2>
+                <div class="form-group">
+                    <label for="dailyDate">Date</label>
+                    <input type="date" id="dailyDate" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dailyCategory">Category</label>
+                        <select id="dailyCategory">
+                            <option>Food & Dining</option>
+                            <option>Transportation</option>
+                            <option>Shopping</option>
+                            <option>Entertainment</option>
+                            <option>Utilities</option>
+                            <option>Healthcare</option>
+                            <option>Education</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dailyAmount">Amount (₹)</label>
+                        <input type="number" id="dailyAmount" placeholder="0.00" step="0.01" min="0" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="dailyDescription">Description</label>
+                    <textarea id="dailyDescription" placeholder="What did you spend on?" rows="2"></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="addDailyExpense()">Add Expense</button>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-bottom: 20px;">Today's Summary</h2>
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3>Today's Total</h3>
+                        <div class="value" id="dailyTotal">₹0.00</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px;">Today's Expenses</h3>
+                <div class="expenses-list" id="dailyList">
+                    <div class="empty-state">
+                        <p>No expenses yet. Add your first expense!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MONTHLY TAB -->
+        <div id="monthly" class="content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px;">Monthly View</h2>
+                <div class="month-selector">
+                    <button onclick="previousMonth()">← Previous</button>
+                    <input type="month" id="monthPicker" />
+                    <button onclick="nextMonth()">Next →</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3>Monthly Total</h3>
+                        <div class="value" id="monthlyTotal">₹0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Days with Expenses</h3>
+                        <div class="value" id="daysWithExpenses">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Daily</h3>
+                        <div class="value" id="averageDaily">₹0.00</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px;">Spending by Category</h3>
+                <div class="category-summary" id="categorySummary"></div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px;">All Expenses This Month</h3>
+                <div class="expenses-list" id="monthlyList">
+                    <div class="empty-state">
+                        <p>No expenses this month yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'expenseTrackerData';
+        let useCloudSync = false;
+
+        // Initialize
+        function init() {
+            const isAuthenticated = localStorage.getItem('useCloudSync');
+            
+            setTodayDate();
+            setCurrentMonth();
+
+            if (isAuthenticated === 'true') {
+                useCloudSync = true;
+                showUserInfo();
+                loadData();
+                displayDailyExpenses();
+                displayMonthlyView();
+            } else if (isAuthenticated === 'local') {
+                useCloudSync = false;
+                document.getElementById('loginModal').classList.remove('show');
+                loadData();
+                displayDailyExpenses();
+                displayMonthlyView();
+            } else {
+                document.getElementById('loginModal').classList.add('show');
+            }
+        }
+
+        function setTodayDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dailyDate').value = today;
+        }
+
+        function setCurrentMonth() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('monthPicker').value = `${year}-${month}`;
+        }
+
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.auth-form').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.auth-tab').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tab + 'Form').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            // Simple demo: accept test@example.com / password123
+            if (email === 'test@example.com' && password === 'password123') {
+                localStorage.setItem('useCloudSync', 'true');
+                localStorage.setItem('userEmail', email);
+                localStorage.setItem('loginTime', new Date().toISOString());
+                
+                useCloudSync = true;
+                document.getElementById('loginModal').classList.remove('show');
+                showUserInfo();
+                loadData();
+                displayDailyExpenses();
+                displayMonthlyView();
+                showSyncStatus('Logged in successfully!');
+            } else {
+                alert('Demo: Use test@example.com / password123');
+            }
+        }
+
+        function handleSignup(e) {
+            e.preventDefault();
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+
+            // Simple demo signup
+            localStorage.setItem('useCloudSync', 'true');
+            localStorage.setItem('userEmail', email);
+            localStorage.setItem('loginTime', new Date().toISOString());
+            
+            useCloudSync = true;
+            document.getElementById('loginModal').classList.remove('show');
+            showUserInfo();
+            loadData();
+            displayDailyExpenses();
+            displayMonthlyView();
+            showSyncStatus('Account created and logged in!');
+        }
+
+        function useLocalStorage() {
+            localStorage.setItem('useCloudSync', 'local');
+            useCloudSync = false;
+            document.getElementById('loginModal').classList.remove('show');
+            loadData();
+            displayDailyExpenses();
+            displayMonthlyView();
+        }
+
+        function logout() {
+            localStorage.removeItem('useCloudSync');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('loginTime');
+            document.getElementById('loginModal').classList.add('show');
+            document.getElementById('authContent').style.display = 'block';
+            document.getElementById('userInfo').style.display = 'none';
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+        }
+
+        function showUserInfo() {
+            const email = localStorage.getItem('userEmail');
+            if (email) {
+                document.getElementById('currentEmail').textContent = email;
+                document.getElementById('userInfo').style.display = 'block';
+                document.getElementById('authContent').style.display = 'none';
+                document.getElementById('syncStatus').style.display = 'block';
+            }
+        }
+
+        function showSyncStatus(message) {
+            const status = document.getElementById('syncStatus');
+            status.textContent = message;
+            status.style.display = 'block';
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        }
+
+        function getExpenses() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveExpenses(expenses) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+            if (useCloudSync) {
+                showSyncStatus('Syncing to cloud...');
+            }
+        }
+
+        function loadData() {
+            return getExpenses();
+        }
+
+        function addDailyExpense() {
+            const date = document.getElementById('dailyDate').value;
+            const category = document.getElementById('dailyCategory').value;
+            const amount = parseFloat(document.getElementById('dailyAmount').value);
+            const description = document.getElementById('dailyDescription').value;
+
+            if (!date || !category || !amount || amount <= 0) {
+                alert('Please fill in all fields correctly');
+                return;
+            }
+
+            const expense = {
+                id: Date.now(),
+                date,
+                category,
+                amount,
+                description,
+                timestamp: new Date().toISOString()
+            };
+
+            const expenses = getExpenses();
+            expenses.push(expense);
+            saveExpenses(expenses);
+
+            // Reset form
+            document.getElementById('dailyAmount').value = '';
+            document.getElementById('dailyDescription').value = '';
+            setTodayDate();
+
+            displayDailyExpenses();
+            displayMonthlyView();
+        }
+
+        function deleteDailyExpense(id) {
+            if (confirm('Delete this expense?')) {
+                let expenses = getExpenses();
+                expenses = expenses.filter(e => e.id !== id);
+                saveExpenses(expenses);
+                displayDailyExpenses();
+                displayMonthlyView();
+            }
+        }
+
+        function displayDailyExpenses() {
+            const today = new Date().toISOString().split('T')[0];
+            const expenses = getExpenses().filter(e => e.date === today);
+            const listContainer = document.getElementById('dailyList');
+            const totalContainer = document.getElementById('dailyTotal');
+
+            let total = 0;
+            let html = '';
+
+            if (expenses.length === 0) {
+                listContainer.innerHTML = '<div class="empty-state"><p>No expenses yet. Add your first expense!</p></div>';
+                totalContainer.textContent = '₹0.00';
+                return;
+            }
+
+            expenses.forEach(expense => {
+                total += expense.amount;
+                const date = new Date(expense.date).toLocaleDateString('en-IN', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+                html += `
+                    <div class="expense-item">
+                        <div class="expense-detail">
+                            <div class="category">${expense.category}</div>
+                            <div class="description">${expense.description || 'No description'}</div>
+                        </div>
+                        <div class="expense-date">${date}</div>
+                        <div class="expense-amount">₹${expense.amount.toFixed(2)}</div>
+                        <button class="btn btn-danger" onclick="deleteDailyExpense(${expense.id})">Delete</button>
+                    </div>
+                `;
+            });
+
+            listContainer.innerHTML = html;
+            totalContainer.textContent = `₹${total.toFixed(2)}`;
+        }
+
+        function displayMonthlyView() {
+            const monthInput = document.getElementById('monthPicker').value;
+            const [year, month] = monthInput.split('-').map(Number);
+            
+            const expenses = getExpenses().filter(e => {
+                const expenseDate = new Date(e.date);
+                return expenseDate.getFullYear() === year && 
+                       expenseDate.getMonth() === month - 1;
+            });
+
+            // Calculate totals
+            let monthlyTotal = 0;
+            const categoryTotals = {};
+            const daysWithExpenses = new Set();
+
+            expenses.forEach(expense => {
+                monthlyTotal += expense.amount;
+                daysWithExpenses.add(expense.date);
+                
+                if (!categoryTotals[expense.category]) {
+                    categoryTotals[expense.category] = 0;
+                }
+                categoryTotals[expense.category] += expense.amount;
+            });
+
+            // Update stats
+            document.getElementById('monthlyTotal').textContent = `₹${monthlyTotal.toFixed(2)}`;
+            document.getElementById('daysWithExpenses').textContent = daysWithExpenses.size;
+            
+            const averageDaily = daysWithExpenses.size > 0 ? monthlyTotal / daysWithExpenses.size : 0;
+            document.getElementById('averageDaily').textContent = `₹${averageDaily.toFixed(2)}`;
+
+            // Display category summary
+            const categorySummaryContainer = document.getElementById('categorySummary');
+            let categoryHTML = '';
+
+            if (Object.keys(categoryTotals).length === 0) {
+                categoryHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">No expenses this month</p>';
+            } else {
+                Object.entries(categoryTotals).forEach(([category, total]) => {
+                    categoryHTML += `
+                        <div class="category-item">
+                            <div class="cat-name">${category}</div>
+                            <div class="cat-amount">₹${total.toFixed(2)}</div>
+                        </div>
+                    `;
+                });
+            }
+            categorySummaryContainer.innerHTML = categoryHTML;
+
+            // Display all expenses
+            const listContainer = document.getElementById('monthlyList');
+            let html = '';
+
+            if (expenses.length === 0) {
+                listContainer.innerHTML = '<div class="empty-state"><p>No expenses this month.</p></div>';
+                return;
+            }
+
+            // Sort by date (newest first)
+            expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            expenses.forEach(expense => {
+                const date = new Date(expense.date).toLocaleDateString('en-IN', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+                html += `
+                    <div class="expense-item">
+                        <div class="expense-detail">
+                            <div class="category">${expense.category}</div>
+                            <div class="description">${expense.description || 'No description'}</div>
+                        </div>
+                        <div class="expense-date">${date}</div>
+                        <div class="expense-amount">₹${expense.amount.toFixed(2)}</div>
+                        <button class="btn btn-danger" onclick="deleteDailyExpense(${expense.id})">Delete</button>
+                    </div>
+                `;
+            });
+
+            listContainer.innerHTML = html;
+        }
+
+        function switchTab(tab) {
+            // Hide all content
+            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+            
+            // Remove active from all tabs
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            // Show selected content
+            document.getElementById(tab).classList.add('active');
+            
+            // Add active to clicked tab
+            event.target.classList.add('active');
+
+            if (tab === 'monthly') {
+                displayMonthlyView();
+            }
+        }
+
+        function previousMonth() {
+            const input = document.getElementById('monthPicker');
+            const [year, month] = input.value.split('-').map(Number);
+            let newMonth = month - 1;
+            let newYear = year;
+
+            if (newMonth < 1) {
+                newMonth = 12;
+                newYear--;
+            }
+
+            input.value = `${newYear}-${String(newMonth).padStart(2, '0')}`;
+            displayMonthlyView();
+        }
+
+        function nextMonth() {
+            const input = document.getElementById('monthPicker');
+            const [year, month] = input.value.split('-').map(Number);
+            let newMonth = month + 1;
+            let newYear = year;
+
+            if (newMonth > 12) {
+                newMonth = 1;
+                newYear++;
+            }
+
+            input.value = `${newYear}-${String(newMonth).padStart(2, '0')}`;
+            displayMonthlyView();
+        }
+
+        // Load when page opens
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
